@@ -52,7 +52,7 @@ triEq a b c = (a==b) && (a==c) && (b==c)
 
     \item An object $A$ in $C$ will be mapped to $F(A)$ in $D$
 
-    \item Functors map morphisms $f : A \rightarrow B$ to $F(f) : F(A) \rightarrow F(B)$
+    \item (Covarient) functors map morphisms $f : A \rightarrow B$ to $F(f) : F(A) \rightarrow F(B)$
 
     \item $F(id_A) = id_{F(A)}$ where $id_A : A \rightarrow A$ and 
       $id_{F(A)} : F(A) \rightarrow F(A)$
@@ -292,7 +292,7 @@ class Monoid a where
   mzero   :: a
   mappend :: a -> a -> a
 \end{verbatim}
-$\mathit{unit} = \tex\usepackage{biblatex}ttt{mzero}$ and $\mathit{mult} = \texttt{mappend}$
+$\mathit{unit} = \texttt{mzero}$ and $\mathit{mult} = \texttt{mappend}$
 \end{frame}
 
 \begin{frame}[fragile]\frametitle{Writer Monad Motivation: Logging}
@@ -339,6 +339,92 @@ runWriter
    return (a*b))
 > (110,["Recored 10", "Recored 11"])
 \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{IO with monads}
+  \begin{itemize}
+
+    \item IO monad, with two operations 
+      \begin{itemize}
+        \item \texttt{putStr :: String -> IO ()} builds a monad that when run will 
+          print the string passed into \texttt{putStr} and return
+        \item \texttt{getLine :: IO String}, build a monad that when run
+          will read a stream of characters for the keyboard up to a newline.
+      \end{itemize}
+\begin{verbatim}
+instace Monad IO a where
+  return a       = IO (\s -> (s,x))
+  (IO m) (>>=) f = IO 
+      (\s -> case m s of (m',_) -> f m)
+\end{verbatim}
+    \item This means the IO monad represents a sequence of computations, which are order in the same order 
+      as the binds. 
+
+    \item The IO monad will then be evaluated once it is returned to the Haskell runtime or \texttt{unsafePerformIO :: IO a -> a} is performed.
+
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Example IO}
+  \begin{verbatim}
+    main :: IO ()
+    main = do x <- getLine
+              putStr ("return: " ++ x)
+  \end{verbatim}
+\end{frame}
+
+\section{Monadic Transformers}
+
+\begin{frame}[fragile]\frametitle{Mixing Monads}
+  \begin{itemize}
+    \item What happens if we want to have both IO and logging in the same functions?
+
+    \item Use monad transformers.
+
+    \item Monad transformers require another function to be defined \texttt{lift :: m a -> t m a}.
+
+    \item This must satisfy the laws:
+      \begin{itemize}
+        \item \texttt{lift . return = return}
+
+        \item \texttt{lift (m >>= f) = lift m >>= (lift . f)}
+      \end{itemize}
+
+    \item This is captured in Haskell by:
+\begin{verbatim}
+class MonadTrans t where
+  lift :: m a -> t m a
+\end{verbatim}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Logging with IO}
+\begin{verbatim}
+type LoggingIO l a = WriterT l IO a
+
+log :: String -> LoggingIO [String] ()
+log s = tell [s]
+
+example :: LoggingIO [String] ()
+example = do log "Print 1"
+             lift (print 1)
+
+main = do str <- execWriterT example
+          (print str)
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{We cannot just compose any Monad}
+\begin{itemize}
+  \item Remember the type of \texttt{join :: M(M a) -> M a}
+
+  \item If we extend this to monad transformers we get \[\texttt{join :: M(N(M(N a))) -> M(N a)}\]
+
+  \item We cannot infer the \texttt{join} method for transformers just from the \texttt{join} functions for
+        the transformer and the monad being transformed.
+
+  \item To allow composition we must also have a function \[\texttt{distrib :: t (m a) -> m (t a)}\]
+\end{itemize}
 \end{frame}
 
 \section{Comonad}
@@ -404,7 +490,7 @@ laplace1D a = (a ? (-1)) + (a ? 1)  - 2 * (a ? 0)
 \texttt{(?)} will try to get the value at \texttt{i+i'} of the value \texttt{a} 
 where \texttt{(CA a i)} 
 
-\blfootnote{Example from A Notation for Comonads by Dominic Orchard and Alan Mycroft}
+\blfootnote{Example from `A Notation for Comonads' by Dominic Orchard and Alan Mycroft}
 \end{frame}
 
 
