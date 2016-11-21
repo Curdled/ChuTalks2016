@@ -6,7 +6,7 @@
 \usepackage{amsmath}
 \usepackage{verbatim}
 \usepackage{pst-node}
-\usepackage{tikz-cd} 
+\usepackage{tikz-cd}
 
 \newcommand\blfootnote[1]{%
   \begingroup
@@ -16,9 +16,9 @@
 }
 
 \author{Joe Isaacs}
-\title{Monad and Comonads}
+\title{Monads and Comonads}
 \institute{Churchill CompSci talks}
-\date{\today}
+\date{November 16, 2016}
 
 \begin{document}
 
@@ -30,7 +30,7 @@
 
 \begin{frame}[fragile]\frametitle{Type classes}
 \begin{verbatim}
-class Eq where
+class Eq a where
   (==) :: a -> a -> Bool
 \end{verbatim}
 
@@ -38,23 +38,62 @@ class Eq where
 instance Eq Integer where
   (==) a b = intEq a b
 
-triEq :: (Eq a) -> a -> a -> a
+triEq :: (Eq a) => a -> a -> a -> Bool
 triEq a b c = (a==b) && (a==c) && (b==c)
 \end{verbatim}
+\end{frame}
+
+\section{Category theory background}
+
+\begin{frame}{Category theory background}
+  A category contains:
+  \begin{itemize}
+    \item Objects ($A,B,C,\dots$)
+
+    \item Morphisms. ($f:B\rightarrow C$)
+
+    \item Each object must have an identity morphism. ($id_A$ for an object $A$)
+
+    \item Morphisms compose. ($f\circ g : A \rightarrow C$, if $g:A\rightarrow B$)
+  \end{itemize}
+
+  Categories must also follow three laws:
+
+  \begin{itemize}
+    \item $f \circ (g \circ h) = (f\circ g) \circ h$
+
+    \item There must be a morphism $h:A\rightarrow C$ such
+      that $h = f\circ g$
+
+
+  \end{itemize}
+  Each object $A$ must contain an identity morphism $\mathit{id}_A : A\rightarrow A$.
+\end{frame}
+
+\begin{frame}{$\mathit{Hask}$}
+  \begin{itemize}
+    \item We take objects $A,B$ to be types \texttt{A} and \texttt{B}
+
+    \item We take morphisms $f : A\rightarrow B$ to be functions of type \mbox{\texttt{f :: a -> b}}
+
+    \item Composition of morphisms $\circ$ will be function composition (written \texttt{(.)} in Haskell).
+
+    \item $f \circ g$ goes to \texttt{(f . g) x} which in haskell in the same as \mbox{\texttt{f (g (x))}}.
+    \end{itemize}
 \end{frame}
 
 \section{Functor}
 
 \begin{frame}{Functor}
   \begin{itemize}
-    \item Functors $F$ will map from a catagory $C$ to a catagory $D$ written as 
+    \item Functors $F$ will map from a category $C$ to a category $D$ written as
       \[ F : C \rightarrow D \]
 
     \item An object $A$ in $C$ will be mapped to $F(A)$ in $D$
 
-    \item (Covarient) functors map morphisms $f : A \rightarrow B$ to $F(f) : F(A) \rightarrow F(B)$
+    \item (Covariant) functors map morphisms $f : A \rightarrow B$ to $F(f) : F(A) \rightarrow F(B)$
 
-    \item $F(id_A) = id_{F(A)}$ where $id_A : A \rightarrow A$ and 
+    \item $F(id_A) = id_{F(A)}$ where $id_A : A \rightarrow A$ and
       $id_{F(A)} : F(A) \rightarrow F(A)$
 
     \item $F(f \circ g) = F(f) \circ F(g) $ (functors distribute over morphism composition).
@@ -63,9 +102,9 @@ triEq a b c = (a==b) && (a==c) && (b==c)
 
 \begin{frame}[fragile]\frametitle{Functor in Haskell}
   \begin{itemize}
-    \item A function $F$ will map $f : A \rightarrow B$ to $F(f) : F(A) \rightarrow F(B)$
-     
-    \item 
+    \item A functor $F$ will map $f : A \rightarrow B$ to $F(f) : F(A) \rightarrow F(B)$
+
+    \item
 \begin{verbatim}
 class Functor f where
    fmap :: (a -> b) -> f a -> f b
@@ -73,7 +112,7 @@ class Functor f where
 
   \item $id_A = \texttt{id :: a -> a}$
 
-  \item $id_{F(A)} = \texttt{fmap id :: f a -> f a}$ 
+  \item $id_{F(A)} = \texttt{fmap id :: f a -> f a}$
 
   \item $F(h\circ g) = \texttt{fmap (h.g) :: f a -> f c}$
 
@@ -88,16 +127,16 @@ class Functor f where
 data Maybe a = Nothing | Just a
 instance Functor Maybe where
   fmap f (Just x) = Just (f x)
-  fmap _ Nothing    = Nothing
+  fmap _ Nothing  = Nothing
 \end{verbatim}
 \begin{itemize}
   \item Must check $F(id_A) = id_{F(A)}$
 \begin{verbatim}
   fmap id x
 case (x == Just a)
-  fmap id (Just a) a === Just (id a) === Just a
+  fmap id (Just a) a ==> Just (id a) ==> Just a
 case (x == Nothing)
-  fmap id Nothing === Nothing
+  fmap id Nothing ==> Nothing
 
 ==> fmap id = id
 \end{verbatim}
@@ -108,19 +147,19 @@ case (x == Nothing)
 Check $F(f \circ g) = F(f) \circ F(g)$
 \begin{verbatim}
 case (Just a)
-      fmap (f.g) (Just a) 
-  === Just ((f.g) a)
-  === Just (f (g a))
+      fmap (f.g) (Just a)
+  ==> Just ((f.g) a)
+  ==> Just (f (g a))
 
-      (fmap f . fmap g) (Just a) 
-  === fmap f (fmap g (Just a)) 
-  === fmap f (Just (g a))
-  === Just (f(g a))
+      (fmap f . fmap g) (Just a)
+  ==> fmap f (fmap g (Just a))
+  ==> fmap f (Just (g a))
+  ==> Just (f(g a))
 case (Nothing)
   fmap (f.g) Nothing == Nothing
-      fmap f . fmap g Nothing 
-  === fmap f Nothing
-  === Nothing
+      fmap f . fmap g Nothing
+  ==> fmap f Nothing
+  ==> Nothing
 \end{verbatim}
 \end{frame}
 
@@ -130,14 +169,15 @@ case (Nothing)
   \begin{itemize}
     \item Defined by $(M,\mathit{join},\mathit{unit})$
 
-    \item $M$ is the monad and also a functor
+    \item $M$ is also a functor
 
-    \item $\mathit{join}$ is the transformation $M (M a) \rightarrow M a$ which satifies
+    \item $\mathit{join}$ is the transformation $M (M a) \rightarrow M a$ which satisfies
       \[ \mathit{join} \circ M (\mathit{join}) = \mathit{join} \circ \mathit{join}  \]
       and \[ \mathit{join} \circ M(M(f)) = M(f) \circ \mathit{join} \]
-    
-    \item $\mathit{unit}$ is the transformation $a \rightarrow M a$ which satifies 
-      \[ \mathit{join} \circ M \mathit{unit} = \mathit{join} \circ \mathit{unit}  = I_M \] where $I_M$ is a transformation
+
+    \item $\mathit{unit}$ is the transformation $a \rightarrow M a$ which satisfies
+      \[ \mathit{join} \circ M \mathit{unit} = \mathit{join} \circ \mathit{unit}  = id_M \]
+
       from $M \rightarrow M$ and \[ \mathit{unit} \circ f = M(f) \circ \mathit{unit} \]
 
 
@@ -145,12 +185,12 @@ case (Nothing)
 \end{frame}
 
 \begin{frame}[fragile]\frametitle{Monad in Haskell}
-We have seen the catagorical definition of monads above, this could be a
+We have seen the categorical definition of monads above, this could be a
 Haskell implementation.
 \begin{verbatim}
 class Functor m => Monad m where
   unit :: a -> m a
-  join  :: m a -> (a -> m b) -> m b
+  join  :: m (m a) -> m a
 \end{verbatim}
 \begin{itemize}
   \item $\mathit{unit} = \texttt{unit}$
@@ -168,17 +208,22 @@ join . fmap (fmap f) = fmap f . join
 
 \begin{frame}[fragile]\frametitle{What do the laws mean?}
 We can explain all the laws
-\begin{verbatim}
-join . fmap join = join . join
-\end{verbatim}
 with commutative diagrams, here is the first:
 
-\[ 
+\[\mathit{join} \circ M(\mathit{join}) = \mathit{join} \circ \mathit{join}\]
+
+\[
 \begin{tikzcd}
 M^3 \arrow{r}{\mathit{join}} \arrow[swap]{d}{M(\mathit{join})} & M^2 \arrow{d}{\mathit{join}} \\
 M^2 \arrow{r}{\mathit{join}} & M
 \end{tikzcd}
 \]
+
+When written in Haskell it looks like this.
+
+\begin{verbatim}
+join . fmap join = join . join
+\end{verbatim}
 \end{frame}
 
 \begin{frame}[fragile]\frametitle{How Monads are really implemented in Haskell}
@@ -191,21 +236,35 @@ class Functor m => Monad m where
   (>>=)  :: m a -> (a -> m b) -> m b
   fail   :: String -> m a
 \end{verbatim}
+\item \texttt{(>>=)} (pronounced bind)
 \item $\texttt{return} = \texttt{unit}$
+\end{itemize}
 
-\item \texttt{(>>=)} (pronounced bind) can be derived form \texttt{unit} and \texttt{fmap}:
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Joining bind}
+\begin{itemize}
+
+  \item  \texttt{join :: m m a -> m a}
+
+  \item  \texttt{>>=  :: m a -> (a -> m b) -> m b}
+
+\item \texttt{(>>=)} can be derived from \texttt{unit} and \texttt{fmap}:
 
 \begin{verbatim}
-join x = x >>= id
+join x = x >>= id  (id :: m a -> m a)
 
-x >>= f = join (fmap f x)
+f :: a -> b
+x :: m a
+
+x >>= f = join (fmap f x)  (fmap f :: m m b)
 \end{verbatim}
 \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]\frametitle{Monad laws using \texttt{(>>=)}}
   \begin{itemize}
-    \item 
+    \item
 \begin{verbatim}
 m >>= return = m
 return m >>= f = f m
@@ -220,7 +279,7 @@ These are left identity, right identity and associativity
 \begin{frame}[fragile]\frametitle{Example: \texttt{Maybe}}
 \begin{verbatim}
 instance Monad Maybe where
-  return        = Just
+  return x      = Just x
   fail _        = Nothing
   Just x  >>= f = f x
   Nothing >>= _ = Nothing
@@ -229,9 +288,9 @@ The Maybe instance of Monad must also follow the monad laws stated previously.
 \begin{verbatim}
 m >>= return = m
 
-Just x >>= return === return x === Just x
+Just x >>= return ==> return x ==> Just x
 
-Nothing >>= return === Nothing
+Nothing >>= return ==> Nothing
 \end{verbatim}
 \end{frame}
 
@@ -239,10 +298,10 @@ Nothing >>= return === Nothing
 
 \begin{frame}[fragile]\frametitle{Computations with possible errors}
 \begin{verbatim}
-computeB ::            a -> Maybe b
-computeC ::            b -> Maybe c
+computeB :: a -> Maybe b
+computeC :: b -> Maybe c
 
-compute  ::            a -> Maybe c
+compute  :: a -> Maybe c
 compute a = case computeB of
               Just b  -> computeC b
               Nothing -> Nothing
@@ -251,19 +310,19 @@ compute a = case computeB of
 
 \begin{frame}[fragile]\frametitle{Computations with possible errors Cont.}
 \begin{verbatim}
-computeB :: Monad m => a -> m     b
-computeC :: Monad m => b -> m     c
+computeB :: a -> Maybe b
+computeC :: b -> Maybe c
 
-compute  :: Monad m => a -> m     c
+compute  :: a -> Maybe c
 compute a = computeB a >>= computeC
 \end{verbatim}
 \end{frame}
 
 \begin{frame}[fragile]\frametitle{do-notation}
 \begin{verbatim}
-do x                 ==> \usepackage{biblatex}x
+do x                ==> x
 
-do let y = z         ==> let y = z in do x
+do let y = z        ==> let y = z in do x
    x
 
 do y <- z           ==> z >>= \y -> do x
@@ -272,98 +331,42 @@ do y <- z           ==> z >>= \y -> do x
 do y                ==> y >>= \_ -> do x
    x
 
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Using do-notation}
+\begin{verbatim}
 compute :: a -> Maybe c
-compute a = 
+compute a =
   do b <- computeB a
-     computeC
+     c <- computeC b
+     return c
 \end{verbatim}
+
+Looks a lot like imperative code
 \end{frame}
 
-\begin{frame}[fragile]\frametitle{Monoid}
-    A monoid is an object $M$ with two morphisms $\mathit{mult}: M \oplus M \rightarrow M$ and $\mathit{unit} : I \rightarrow M$. 
 
-    Where both \[\mathit{unit} \circ M = M = M \circ \mathit{unit} \text{ (left and right
-        identity)}\] and
-    \[ \mathit{mult} \circ (\mathit{mult} \circ \mathit{mult}) = (\mathit{mult} \circ \mathit{mult})
-    \circ \mathit{mult} \text{ (associativity)} \]
 
-\begin{verbatim}
-class Monoid a where 
-  mzero   :: a
-  mappend :: a -> a -> a
-\end{verbatim}
-$\mathit{unit} = \texttt{mzero}$ and $\mathit{mult} = \texttt{mappend}$
-\end{frame}
-
-\begin{frame}[fragile]\frametitle{Writer Monad Motivation: Logging}
-  \begin{itemize}
-    \item Want to store order set of stages throughout a computation.
-\begin{verbatim}
-addOne :: Int -> Int -> [String]
-addOne x = (x+1,["Added 1 to " ++ show x])
-
-applyLogger :: Monoid m => 
-               (v,m) -> (v -> (o, m)) -> (o,m)
-applyLogger (input,log) f = (o, log `mappend` l)
-  where (o,l) = f input
-
-addOne 0 `applyLogger` addOne 
-`applyLogger` addone
-
-> (3,["Added 1 to 0"
-     ,"Added 1 to 1","Added 1 to 2"])
-\end{verbatim}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]\frametitle{Write Monad}
-\begin{verbatim}
-newtype Writer w a = Writer { runWriter :: (a,w) }
-
-instance (Monoid w) => Monad (Writer w) where
-  return x = writer (x,mempty)
-  (Writer (x,v)) >>= f = let (Writer (y,v')) = f x 
-                         in Writer (y,v `mappend` v')
-\end{verbatim}
-\end{frame}
-
-\begin{frame}[fragile]\frametitle{Logging with the Write Monad}
-\begin{verbatim}
-
-logNumber :: Int -> Writer [String] Int
-logNumber x = Writer (x, ["Recored " ++ (show x))
-
-runWriter 
-(do a <- logNumber 10
-   b <- logNumber 11
-   return (a*b))
-> (110,["Recored 10", "Recored 11"])
-\end{verbatim}
-\end{frame}
 
 \begin{frame}[fragile]\frametitle{IO with monads}
   \begin{itemize}
 
-    \item IO monad, with two operations 
+    \item IO monad, with two operations
       \begin{itemize}
-        \item \texttt{putStr :: String -> IO ()} builds a monad that when run will 
+        \item \texttt{putStr :: String -> IO ()} builds a monad that when run will
           print the string passed into \texttt{putStr} and return
         \item \texttt{getLine :: IO String}, build a monad that when run
           will read a stream of characters for the keyboard up to a newline.
       \end{itemize}
-\begin{verbatim}
-instace Monad IO a where
-  return a       = IO (\s -> (s,x))
-  (IO m) (>>=) f = IO 
-      (\s -> case m s of (m',_) -> f m)
-\end{verbatim}
-    \item This means the IO monad represents a sequence of computations, which are order in the same order 
-      as the binds. 
+    \item This means the IO monad represents a sequence of computations, which are order in the same order
+      as the binds.
 
     \item The IO monad will then be evaluated once it is returned to the Haskell runtime or \texttt{unsafePerformIO :: IO a -> a} is performed.
 
   \end{itemize}
 \end{frame}
+
 
 \begin{frame}[fragile]\frametitle{Example IO}
   \begin{verbatim}
@@ -373,7 +376,106 @@ instace Monad IO a where
   \end{verbatim}
 \end{frame}
 
+\begin{frame}[fragile]\frametitle{\texttt{>>=} for IO}
+\begin{verbatim}
+instance Monad IO a where
+  return a       = IO (\s -> (s,a))
+  (IO m) (>>=) f = IO
+      (\s -> case MUTABLE(m s) of (m',_) -> f m')
+\end{verbatim}
+\end{frame}
+
+\section{Comonad}
+
+\begin{frame}[fragile]\frametitle{Comonad}
+  \begin{itemize}
+    \item Dual of a monad
+
+
+    \item Remember Monad has two morphisms
+      \begin{itemize}
+        \item $\mathit{unit} : a \rightarrow M a$
+        \item $\mathit{join} : M (M a) \rightarrow M a$
+      \end{itemize}
+
+    \item A comonad $C$ defines two transformations:
+      \begin{itemize}
+        \item $\mathit{extract} : C a \rightarrow a$
+
+        \item $\mathit{duplicate}  : C a \rightarrow C (C a)$
+      \end{itemize}
+    \item Satisfying three laws:
+      \begin{itemize}
+        \item $\mathit{extend} \circ \mathit{duplicate} = I_C$
+        \item $C(\mathit{extract}) \circ \mathit{duplicate} = I_C$
+        \item $C(\mathit{duplicate}) \circ \mathit{duplicate} = \mathit{duplicate}
+          \circ \mathit{duplicate}$
+      \end{itemize}
+    \item In the triple $(C,\mathit{extract},\mathit{duplicate})$, $C$ is a functor.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Comonad in Haskell}
+\begin{verbatim}
+class Functor w => Comonad w where
+  extract :: w a -> a
+  extend  :: (w a -> b) -> w a -> w b
+\end{verbatim}
+since
+\begin{verbatim}
+duplicate :: m a   -> m m a
+fmap f    :: m m a -> m b
+\end{verbatim}
+We can define extend as \texttt{extend f = (fmap f) . duplicate}
+
+A Comonad must also obey these laws:
+\begin{verbatim}
+extend extract      = id
+extract . extend f  = f
+extend f . extend g = extend (f. extend g)
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{CArray and associated functions}
+\begin{verbatim}
+data CArray i a = CA (Array i a) i 
+
+indices :: Array i a -> [i]
+
+bounds :: Array i a -> [i]
+
+array :: [i] -> [a] -> Array i a
+
+(!) :: Array i a -> a
+
+(?) :: CArray i a -> a   (a safe ! with an offset)
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Array filters are comonads}
+
+\begin{verbatim}
+instance Comonad (CArray i) where
+  extract (CA arr c) = arr!c
+  extend f (CA x c)  =
+    let  es' = map (\i -> (i,f(CA x i))) (indices x)
+    in   CA (array (bounds x) es') c
+
+laplace1D :: Num a => CArray Integer a -> a
+laplace1D a = (a ? (-1)) + (a ? 1)  - 2 * (a ? 0)
+\end{verbatim}
+\texttt{(?)} will try to get the value at \texttt{i+i'} of the value \texttt{a}
+where \texttt{(CA a i)}
+
+\blfootnote{Example from `A Notation for Comonads' by Dominic Orchard and Alan Mycroft}
+\end{frame}
+
+\begin{frame}
+  \center \Huge Questions?
+\end{frame}
+
 \section{Monadic Transformers}
+
 
 \begin{frame}[fragile]\frametitle{Mixing Monads}
   \begin{itemize}
@@ -381,7 +483,7 @@ instace Monad IO a where
 
     \item Use monad transformers.
 
-    \item Monad transformers require another function to be defined \texttt{lift :: m a -> t m a}.
+    \item Monad transformers require another function to be defined \mbox{\texttt{lift :: m a -> t m a}}.
 
     \item This must satisfy the laws:
       \begin{itemize}
@@ -427,70 +529,66 @@ main = do str <- execWriterT example
 \end{itemize}
 \end{frame}
 
-\section{Comonad}
+\begin{frame}[fragile]\frametitle{Monoid}
+    A monoid is an object $M$ with two morphisms $\oplus: M \times M \rightarrow M$ and $\mathit{unit} :M$.
 
-\begin{frame}[fragile]\frametitle{Comonad}
+    Where both \[\mathit{unit} \oplus M = M = M \oplus \mathit{unit} \text{ (left and right
+        identity)}\] and
+    \[ M \oplus (M \oplus M) = (M \oplus M)
+      \oplus M \text{ (associativity)} \]
+
+\begin{verbatim}
+class Monoid a where
+  mzero   :: a
+  mappend :: a -> a -> a
+\end{verbatim}
+$\mathit{unit} = \texttt{mzero}$ and $\oplus = \texttt{mappend}$
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Writer Monad Motivation: Logging}
   \begin{itemize}
-    \item Dual of a monad
+    \item Want to store order set of stages throughout a computation.
+\begin{verbatim}
+addOne :: Int -> Int -> [String]
+addOne x = (x+1,["Added 1 to " ++ show x])
 
+applyLogger :: Monoid m =>
+               (v,m) -> (v -> (o, m)) -> (o,m)
+applyLogger (input,log) f = (o, log `mappend` l)
+  where (o,l) = f input
 
-    \item Remember Monad has two morphisms
-      \begin{itemize}
-        \item $\mathit{unit} : a \rightarrow M a$
-        \item $\mathit{join} : M (M a) \rightarrow M a$
-      \end{itemize}
+addOne 0 `applyLogger` addOne
+`applyLogger` addone
 
-    \item A comonad $C$ defines two transformations:
-      \begin{itemize}
-        \item $\mathit{extract} : C a \rightarrow a$ 
-
-        \item $\mathit{duplicate}  : C a \rightarrow C (C a)$
-      \end{itemize}
-    \item Satisfying three laws:
-      \begin{itemize}
-        \item $\mathit{extend} \circ \mathit{duplicate} = I_C$
-        \item $C(\mathit{extract}) \circ \mathit{duplicate} = I_C$
-        \item $C(\mathit{duplicate}) \circ \mathit{duplicate} = \mathit{duplicate}
-          \circ \mathit{duplicate}$
-      \end{itemize}
-    \item Is also a functor.
+> (3,["Added 1 to 0"
+     ,"Added 1 to 1","Added 1 to 2"])
+\end{verbatim}
   \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]\frametitle{Comonad in Haskell}
+\begin{frame}[fragile]\frametitle{Write Monad}
 \begin{verbatim}
-class Functor w => Comonad w where
-  extract :: w a -> a
-  extend  :: (w a -> b) -> w a -> w b
-\end{verbatim}
-we can define extend as \texttt{extend f = fmap f.duplicate}
+newtype Writer w a = Writer { runWriter :: (a,w) }
 
-This must also obey the laws:
-\begin{verbatim}
-extend extract      = id
-extract . extend f  = f
-extend f . extend g = extend (f. extend g)
+instance (Monoid w) => Monad (Writer w) where
+  return x = writer (x,mempty)
+  (Writer (x,v)) >>= f = let (Writer (y,v')) = f x
+                         in Writer (y,v `mappend` v')
 \end{verbatim}
 \end{frame}
 
-\begin{frame}[fragile]\frametitle{Array filters are comonads}
-
+\begin{frame}[fragile]\frametitle{Logging with the Write Monad}
 \begin{verbatim}
-data CArray i a = CA (Array i a) i deriving Show
 
-instance Ix i => Comonad (CArray i) where
-  extract (CA arr c) = arr!c
-  extend f (CA x c)  =
-    let  es' = map (\i -> (i,f(CA x i))) (indices x)
-    in   CA (array (bounds x) es') c
+logNumber :: Int -> Writer [String] Int
+logNumber x = Writer (x, ["Recorded " ++ (show x))
 
-laplace1D :: Num a => CArray Integer a -> a
-laplace1D a = (a ? (-1)) + (a ? 1)  - 2 * (a ? 0)
+runWriter
+(do a <- logNumber 10
+   b <- logNumber 11
+   return (a*b))
+> (110,["Recorded 10", "Recorded 11"])
 \end{verbatim}
-\texttt{(?)} will try to get the value at \texttt{i+i'} of the value \texttt{a} 
-where \texttt{(CA a i)} 
-
-\blfootnote{Example from `A Notation for Comonads' by Dominic Orchard and Alan Mycroft}
 \end{frame}
 
 
